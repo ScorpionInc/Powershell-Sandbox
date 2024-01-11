@@ -41,3 +41,8 @@ function Get-ChildItemAll([string]$path='.\'){
 
 # Prints common propertied from Get-ChildItemAll results in a table format.
 function ll([string]$path='.\'){(Get-ChildItemAll "$($path)") | Format-Table -Property Mode,LastWriteTime,Length,Name;}
+
+# Add missing registry PS-Drives
+New-PSDrive -PSProvider Registry -Name HKCR -Root HKEY_CLASSES_ROOT
+New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
+New-PSDrive -PSProvider Registry -Name HKCC -Root HKEY_CURRENT_CONFIG
