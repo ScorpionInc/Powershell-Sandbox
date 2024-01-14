@@ -307,6 +307,13 @@ function ll{
     }
 }
 
+# Creates empty-file of name: $args[$i] if not exists.
+function Touch-File{
+    foreach($a in $args){
+        echo $null >> $a
+    }
+}
+
 # Add missing registry PS-Drives
 New-PSDrive -PSProvider Registry -Name HKCR -Root HKEY_CLASSES_ROOT -ErrorAction SilentlyContinue | Out-Null;
 New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS -ErrorAction SilentlyContinue | Out-Null;
@@ -340,3 +347,7 @@ Write-HostCentered "Welcome back, \\$($COMPUTER_INFO.CsUserName)." -Prefix "#" -
 Write-HostCentered "$($COMPUTER_INFO.CsDomain) $(Get-Date)" -Prefix "#" -Suffix "#";
 Write-HostCentered " " -Prefix "#" -Suffix "#"
 ConvertTo-HostWideString "#";
+
+# Add Aliases
+Set-Alias netcat "ncat"
+Set-Alias touch "Touch-File"
