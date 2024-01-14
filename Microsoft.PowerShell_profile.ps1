@@ -14,86 +14,102 @@ function Clone-Object($InputObject){
 }
 
 # Returns array of files in the specified(or cwd) path that have non "$DATA" additional data streams(ads).
-function Get-ADS([string]$path='.\'){
+function Get-ADS{
     $entries = @();
-    Get-ChildItem -Path "$($path)" -Force -ErrorAction SilentlyContinue | ForEach-Object {
-        $file_entry = [PSCustomObject]@{
-            Mode=$_.Mode
-            IsContainer=$_.PSIsContainer
-            Target=$_.Target
-            CreationTime=$_.CreationTime
-            LastAccessTime=$_.LastAccessTime
-            LastWriteTime=$_.LastWriteTime
-            Length=$_.Length
-            Path=$_.PSPath
-            Name=$_.Name
-            Extension=($_.Extension).Replace('.','')
-        };
-        Get-Item $_.FullName -Force -Stream * -ErrorAction SilentlyContinue | Select-Object PSChildName,Stream,Length | Where-Object -Property Stream -NE ':$DATA' | Select-Object Length,PSChildName | ForEach-Object {
-            $entry = Clone-Object($file_entry);
-            $entry.Length = $_.Length;
-            $entry.Name = $_.PSChildName;
-            $entries += ($entry);
+    if($args.Count -le 0){
+        $args += ".\";
+    }
+    foreach($path in $args){
+        Get-ChildItem -Path "$($path)" -Force -ErrorAction SilentlyContinue | ForEach-Object {
+            $file_entry = [PSCustomObject]@{
+                Mode=$_.Mode
+                IsContainer=$_.PSIsContainer
+                Target=$_.Target
+                CreationTime=$_.CreationTime
+                LastAccessTime=$_.LastAccessTime
+                LastWriteTime=$_.LastWriteTime
+                Length=$_.Length
+                Path=$_.PSPath
+                Name=$_.Name
+                Extension=($_.Extension).Replace('.','')
+            };
+            Get-Item $_.FullName -Force -Stream * -ErrorAction SilentlyContinue | Select-Object PSChildName,Stream,Length | Where-Object -Property Stream -NE ':$DATA' | Select-Object Length,PSChildName | ForEach-Object {
+                $entry = Clone-Object($file_entry);
+                $entry.Length = $_.Length;
+                $entry.Name = $_.PSChildName;
+                $entries += ($entry);
+            } | Out-Null;
         } | Out-Null;
-    } | Out-Null;
+    }
     return($entries);
 }
 # Returns some properties of all files and folders as well as their additional data streams(ads) as an Array of Objects.
-function Get-ChildItemAll([string]$path='.\'){
- $entries = @();
- Get-ChildItem -Path "$($path)" -Force -ErrorAction SilentlyContinue | ForEach-Object {
-  $file_entry = [PSCustomObject]@{
-   Mode=$_.Mode
-   IsContainer=$_.PSIsContainer
-   Target=$_.Target
-   CreationTime=$_.CreationTime
-   LastAccessTime=$_.LastAccessTime
-   LastWriteTime=$_.LastWriteTime
-   Length=$_.Length
-   Path=$_.PSPath
-   Name=$_.Name
-   Extension=($_.Extension).Replace('.','')
-  };
-  $entries += ($file_entry);
-  Get-Item $_.FullName -Force -Stream * -ErrorAction SilentlyContinue | Select-Object PSChildName,Stream,Length | Where-Object -Property Stream -NE ':$DATA' | Select-Object Length,PSChildName | ForEach-Object {
-   $entry = Clone-Object($file_entry);
-   $entry.Length = $_.Length;
-   $entry.Name = $_.PSChildName;
-   $entries += ($entry);
-  } | Out-Null;
- } | Out-Null;
- return($entries);
-}
-# Returns array of objects containing information about all File's with ADS['s] not "$DATA".
-function Get-ADSRecurse([string]$path='.\'){
+function Get-ChildItemAll{
     $entries = @();
-    Get-ChildItem -Path "$($path)" -Force -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
-        $file_entry = [PSCustomObject]@{
-            Mode=$_.Mode
-            IsContainer=$_.PSIsContainer
-            Target=$_.Target
-            CreationTime=$_.CreationTime
-            LastAccessTime=$_.LastAccessTime
-            LastWriteTime=$_.LastWriteTime
-            Length=$_.Length
-            Path=$_.PSPath
-            Name=$_.Name
-            Extension=($_.Extension).Replace('.','')
-        };
-        Get-Item $_.FullName -Force -Stream * -ErrorAction SilentlyContinue | Select-Object PSChildName,Stream,Length | Where-Object -Property Stream -NE ':$DATA' | Select-Object Length,PSChildName | ForEach-Object {
-            $entry = Clone-Object($file_entry);
-            $entry.Length = $_.Length;
-            $entry.Name = $_.PSChildName;
-            $entries += ($entry);
+    if($args.Count -le 0){
+        $args += ".\";
+    }
+    foreach($path in $args){
+        Get-ChildItem -Path "$($path)" -Force -ErrorAction SilentlyContinue | ForEach-Object {
+            $file_entry = [PSCustomObject]@{
+                Mode=$_.Mode
+                IsContainer=$_.PSIsContainer
+                Target=$_.Target
+                CreationTime=$_.CreationTime
+                LastAccessTime=$_.LastAccessTime
+                LastWriteTime=$_.LastWriteTime
+                Length=$_.Length
+                Path=$_.PSPath
+                Name=$_.Name
+                Extension=($_.Extension).Replace('.','')
+            };
+            $entries += ($file_entry);
+            Get-Item $_.FullName -Force -Stream * -ErrorAction SilentlyContinue | Select-Object PSChildName,Stream,Length | Where-Object -Property Stream -NE ':$DATA' | Select-Object Length,PSChildName | ForEach-Object {
+                $entry = Clone-Object($file_entry);
+                $entry.Length = $_.Length;
+                $entry.Name = $_.PSChildName;
+                $entries += ($entry);
+            } | Out-Null;
         } | Out-Null;
-    } | Out-Null;
+    }
+    return($entries);
+}
+
+# Returns array of objects containing information about all File's with ADS['s] not "$DATA".
+function Get-ADSRecurse(){
+    $entries = @();
+    if($args.Count -le 0){
+        $args += ".\";
+    }
+    foreach($path in $args){
+        Get-ChildItem -Path "$($path)" -Force -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+            $file_entry = [PSCustomObject]@{
+                Mode=$_.Mode
+                IsContainer=$_.PSIsContainer
+                Target=$_.Target
+                CreationTime=$_.CreationTime
+                LastAccessTime=$_.LastAccessTime
+                LastWriteTime=$_.LastWriteTime
+                Length=$_.Length
+                Path=$_.PSPath
+                Name=$_.Name
+                Extension=($_.Extension).Replace('.','')
+            };
+            Get-Item $_.FullName -Force -Stream * -ErrorAction SilentlyContinue | Select-Object PSChildName,Stream,Length | Where-Object -Property Stream -NE ':$DATA' | Select-Object Length,PSChildName | ForEach-Object {
+                $entry = Clone-Object($file_entry);
+                $entry.Length = $_.Length;
+                $entry.Name = $_.PSChildName;
+                $entries += ($entry);
+            } | Out-Null;
+        } | Out-Null;
+    }
     return($entries);
 }
 # Returns some properties of all files and folders as well as additional data streams(ads) as an Object for this path and it's subdirs.
-function Get-ChildItemAllRecurse([string]$path='.\'){
-    # *WARNING* Can be memory intensive!
+function Get-ChildItemAllRecurse{
+    # *WARNING* Can be quite memory intensive!
     $entries = @();
-    $next = (Get-ChildItemAll $path);
+    $next = (Get-ChildItemAll "$($args)");
     $checkmes = New-Object System.Collections.ArrayList;
     $checkmes.AddRange($next);
     while($checkmes.Length -gt 0){
@@ -102,7 +118,7 @@ function Get-ChildItemAllRecurse([string]$path='.\'){
         $entries += $next;
         if($next.IsContainer){
             #Write-Host "[DEBUG]: Get-ChildItemAllRecurse Adding children of path: '" + $next.Path + "'.";#Debugging
-            $next = @(Get-ChildItemAll ($next.Path));
+            $next = @(Get-ChildItemAll "$($next.Path)");
             $checkmes.AddRange($next);
         }
     }
@@ -110,13 +126,31 @@ function Get-ChildItemAllRecurse([string]$path='.\'){
 }
 
 # Prints common propertied from Get-ChildItemAll results in a table format.
-function ll([string]$path='.\'){(Get-ChildItemAll "$($path)") | Format-Table -Property Mode,LastWriteTime,Length,Name;}
-function llr([string]$path='.\'){
-    $gciar = (Get-ChildItemAllRecurse "$($path)");
-    Foreach ($i in $gciar){
-        $i.Path = Resolve-Path -relative $i.Path;
+function ll{
+    # Declare Variable(s)
+    $isRecursive=$False;
+    $paths=@();
+    # Process Function Arguments / Parameters
+    if($args.Count -le 0){
+        $args += ".\";
     }
-    $gciar | Format-Table -Property Mode,LastWriteTime,Length,Path;
+    foreach($a in $args){
+        if($a -ieq "-r" -or $a -ieq "/r"){
+            $isRecursive=$True;
+            continue;
+        }
+        $paths += $a;
+    }
+    # Execute
+    if($isRecursive){
+        $gciar = (Get-ChildItemAllRecurse "$($paths)");
+        Foreach ($i in $gciar){
+            $i.Path = Resolve-Path -relative $i.Path;
+        }
+        $gciar | Format-Table -Property Mode,LastWriteTime,Length,Path;
+    } else {
+        (Get-ChildItemAll "$($paths)") | Format-Table -Property Mode,LastWriteTime,Length,Name;
+    }
 }
 
 # Add missing registry PS-Drives
