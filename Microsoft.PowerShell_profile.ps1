@@ -1,3 +1,11 @@
+﻿# Save the current Text Encoding settings and switch session to UTF-8.
+$originalOutputEncoding = $OutputEncoding; $originalConsoleEncoding = [Console]::OutputEncoding;
+try{
+    $targetOutputEncoding = [System.Text.Encoding]::UTF8;
+    $OutputEncoding = $targetOutputEncoding;
+    [Console]::OutputEncoding = $targetOutputEncoding;
+} Catch {}
+
 # Modified from source:
 #https://stackoverflow.com/questions/9204829/deep-copying-a-psobject
 #https://stackoverflow.com/a/62559171
@@ -11,6 +19,152 @@ function Clone-Object($InputObject){
    $InputObject
   )
  );
+}
+
+# ANSI Color Code Function(s)
+$ANSIEscape = "$([char]27)";
+$ANSIEnd = [string]"$ANSIEscape[0m";
+enum ANSIFGColors {
+    None    = 0
+    Black   = 30
+    Red     = 91
+    Green   = 92
+    Yellow  = 93
+    Blue    = 94
+    Magenta = 95
+    Cyan    = 96
+    White   = 97
+}
+enum ANSIBGColors {
+    None    = 0
+    Black   = 40
+    Red     = 41
+    Green   = 42
+    Yellow  = 103
+    Blue    = 44
+    Magenta = 105
+    Cyan    = 46
+    White   = 107
+}
+# Returns ANSI Code as a String to set text color foreground and background in supporting terminal(s).
+function Get-ANSIColorString([ANSIFGColors]$ForegroundColor=[ANSIFGColors]::None, [ANSIBGColors]$BackgroundColor=[ANSIBGColors]::None){
+    if($ForegroundColor -eq [ANSIFGColors]::None ){ return ""; }
+    $colorStr = [string]"$ANSIEscape[$($ForegroundColor.value__)";
+    if($BackgroundColor -ne [ANSIBGColors]::None ){
+        $colorStr += ";$($BackgroundColor.value__)";
+    }
+    $colorStr += "m";
+    return $colorStr;
+}
+# Example: ConvertTo-ANSIColoredText "Text to be colored." Cyan Red
+function ConvertTo-ANSIColoredText([string]$StringToColor="", [ANSIFGColors]$ForegroundColor=[ANSIFGColors]::None, [ANSIBGColors]$BackgroundColor=[ANSIBGColors]::None){
+    return "$(Get-ANSIColorString $ForegroundColor $BackgroundColor)$($StringToColor)$($ANSIEnd)"
+}
+
+# Returns the count of characters in a row of the terminal(if possible).
+function Get-HostUIWidth{
+    # Returns count of 0 on failure.
+    return([Math]::Max(0, $Host.UI.RawUI.BufferSize.Width - 1));
+}
+# Converts string pattern, into a string as wide as the host UI(if possible).
+function ConvertTo-HostWideString([string]$Pattern="#"){
+    $UI_Width = (Get-HostUIWidth);
+    $string = "";
+    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($UI_Width / $Pattern.Length)); $i++){
+        $string = $string + $Pattern;
+    }
+    $remainder = $UI_Width - $string.Length;
+    for($i = 0; $i -lt $remainder; $i++){
+        $string = $string + $Pattern[$i];
+    }
+    return($string);
+}
+# Converts string with customizable prefix, suffix and spacer to a string centered on host UI(if possible).
+function ConvertTo-HostCenteredString
+{
+    param([string]$Message="", [string]$Prefix="", [string]$Suffix="", [string]$Spacer=" ")
+    $UI_Width         = (Get-HostUIWidth);
+    $UI_HalfWidth     = ($UI_Width / 2);
+    $Message_HalfWidth= ($Message.Length / 2);
+    $Left_Buffer      = ($UI_HalfWidth - $Message_HalfWidth) - $Prefix.Length;
+    $Right_Buffer     = ($UI_HalfWidth - $Message_HalfWidth) - $Suffix.Length;
+    $string = $Prefix;
+    if($Spacer.Length -ile 0){
+        # Prevent divide by zero.
+        $Spacer = " ";
+    }
+    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($Left_Buffer / $Spacer.Length)); $i++)
+    {
+        $string = $string + "$($Spacer)";
+    }
+    $string = $string + "$($Message)";
+    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($Right_Buffer / $Spacer.Length)); $i++)
+    {
+        $string = $string + "$($Spacer)";
+    }
+    # Do Rounding offset at the end
+    if($Right_Buffer -ne [Math]::Floor($Right_Buffer)){
+        $string += $Spacer[0];
+    }
+    $string = $string + $Suffix;
+    <#
+    Write-Host "UIW: $($UI_Width)";#Debugging
+    Write-Host "UIHW: $($UI_HalfWidth)";#Debugging
+    Write-Host "MHW: $($Message_HalfWidth)";#Debugging
+    Write-Host "Left: $($Left_Buffer)`t Right: $($Right_Buffer)";#Debugging
+    Write-Host "Result: $($string.Length)";#Debugging
+    #>
+    return $string
+}
+# Writes lines with optional custom prefix, suffix and spacer to Host/Console.
+function Write-HostCentered{
+    # Variable(s)
+    $Prefix = "";
+    $Suffix = "";
+    $Spacer = " ";
+    $Lines  = @();
+    # Process all function arguments
+    $pargs = @();
+    # Split string inputs into multiple entries by New line character(s).
+    foreach($a in $args){
+        if($a.GetType().Name -eq "String"){
+            $mLines = $a.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries);
+            foreach($l in $mLines){
+                $pargs += $l.Trim();
+            }
+            continue;
+        }
+        $pargs += $a;
+    }
+    # Process flags being passed to specify optional settings like prefix, suffix, and spacer.
+    $skip = 0;
+    for($i = 0; $i -lt $pargs.Length; $i++){
+        if($skip -igt 0){
+            $skip = $(($skip - 1));
+            continue;
+        }
+        if($pargs[$i] -ieq "-Prefix"){
+            $skip = $(($skip + 1));
+            $Prefix = "$($pargs[$(($i+1))])";
+            continue;
+        }
+        if($pargs[$i] -ieq "-Suffix"){
+            $skip = $(($skip + 1));
+            $Suffix = "$($pargs[$(($i+1))])";
+            continue;
+        }
+        if($pargs[$i] -ieq "-Spacer"){
+            $skip = $(($skip + 1));
+            $Spacer = "$($pargs[$(($i+1))])";
+            continue;
+        }
+        $Lines += "$($pargs[$i])";
+    }
+    # Execute Task(s)
+    foreach($line in $Lines){
+        $nextString = (ConvertTo-HostCenteredString "$($line)" -Prefix "$($Prefix)" -Suffix "$($Suffix)" -Spacer "$($Spacer)");
+        Write-Host "$($nextString)";
+    }
 }
 
 # Returns array of files in the specified(or cwd) path that have non "$DATA" additional data streams(ads).
@@ -157,3 +311,32 @@ function ll{
 New-PSDrive -PSProvider Registry -Name HKCR -Root HKEY_CLASSES_ROOT -ErrorAction SilentlyContinue | Out-Null;
 New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS -ErrorAction SilentlyContinue | Out-Null;
 New-PSDrive -PSProvider Registry -Name HKCC -Root HKEY_CURRENT_CONFIG -ErrorAction SilentlyContinue | Out-Null;
+
+# Define and Display Profile Banner.
+# Text-Art Sourced/Modified from: https://emojicombos.com/scorpion-ascii-art
+$BANNER = @(
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2840,[char]0x28f4,[char]0x28f6,[char]0x28f6,[char]0x28f6,[char]0x2866,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28a0,[char]0x28ff,[char]0x28e7,[char]0x28dd,[char]0x281b,[char]0x281b,[char]0x280b,[char]0x28be,[char]0x28ff,[char]0x28e6,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28e0,[char]0x2859,[char]0x283f,[char]0x285f,[char]0x280b,[char]0x2880,[char]0x28c0,[char]0x28c0,[char]0x28cc,[char]0x28fd,[char]0x28ef,[char]0x2877,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x2801,[char]0x2810,[char]0x2809,[char]0x2808,[char]0x28bb,[char]0x28f7,[char]0x287b,[char]0x28ff,[char]0x2807,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28e9,[char]0x28f6,[char]0x28e7,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2880,[char]0x28f8,[char]0x28ff,[char]0x283f,[char]0x289b,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28ff,[char]0x28ef,[char]0x28f7,[char]0x28f6,[char]0x28e6,[char]0x28e0,[char]0x287e,[char]0x28a1,[char]0x28fe,[char]0x28bf,[char]0x287f,[char]0x28ff,[char]0x28e6,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2880,[char]0x28e0,[char]0x287f,[char]0x283b,[char]0x28c6,[char]0x28d8,[char]0x28b8,[char]0x28ff,[char]0x28fb,[char]0x28fe,[char]0x28ff,[char]0x2877,[char]0x28db,[char]0x2835,[char]0x289f,[char]0x28f1,[char]0x287e,[char]0x28fb,[char]0x28f7,[char]0x28ff,[char]0x28b6,[char]0x28e4,[char]0x28f4,[char]0x28e4,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x28f8,[char]0x281f,[char]0x28e1,[char]0x28e4,[char]0x28e4,[char]0x28ec,[char]0x28ff,[char]0x28e3,[char]0x28c5,[char]0x28ff,[char]0x287f,[char]0x28f7,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28de,[char]0x280b,[char]0x28d0,[char]0x28fb,[char]0x280f,[char]0x28dc,[char]0x281b,[char]0x28bf,[char]0x28ff,[char]0x28fd,[char]0x28f7,[char]0x28c4,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2880,[char]0x2847,[char]0x2890,[char]0x28ff,[char]0x2881,[char]0x2874,[char]0x283d,[char]0x28f7,[char]0x28fe,[char]0x287f,[char]0x283b,[char]0x28f7,[char]0x28f9,[char]0x285b,[char]0x283f,[char]0x283f,[char]0x28ed,[char]0x28dc,[char]0x285b,[char]0x2803,[char]0x2800,[char]0x2839,[char]0x2824,[char]0x2800,[char]0x2818,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28f7,[char]0x000a,
+[char]0x2810,[char]0x2809,[char]0x2800,[char]0x2808,[char]0x28ff,[char]0x28b8,[char]0x28c7,[char]0x28b0,[char]0x287e,[char]0x283f,[char]0x283f,[char]0x281b,[char]0x281b,[char]0x280b,[char]0x2865,[char]0x28be,[char]0x2803,[char]0x28cd,[char]0x2809,[char]0x283f,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28f0,[char]0x28ff,[char]0x283f,[char]0x281f,[char]0x289b,[char]0x284b,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28fa,[char]0x2898,[char]0x284f,[char]0x28b8,[char]0x281f,[char]0x2800,[char]0x2890,[char]0x28ed,[char]0x28bb,[char]0x283f,[char]0x28ff,[char]0x280f,[char]0x2801,[char]0x2808,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x283f,[char]0x280b,[char]0x2800,[char]0x2880,[char]0x28fe,[char]0x2807,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2808,[char]0x2801,[char]0x2800,[char]0x28f9,[char]0x2839,[char]0x28c6,[char]0x28a0,[char]0x28ff,[char]0x28ff,[char]0x28c4,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2820,[char]0x281f,[char]0x2801,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2818,[char]0x2801,[char]0x2800,[char]0x287e,[char]0x2838,[char]0x28ff,[char]0x28df,[char]0x28ff,[char]0x28f7,[char]0x28f6,[char]0x28f6,[char]0x28e4,[char]0x28c0,[char]0x28c0,[char]0x28c0,[char]0x28c0,[char]0x28c0,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28bb,[char]0x28b8,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x287f,[char]0x281f,[char]0x283f,[char]0x281b,[char]0x281f,[char]0x2809,[char]0x2803,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2819,[char]0x281b,[char]0x281b,[char]0x2809,[char]0x283a,[char]0x2837,[char]0x28a6,[char]0x2836,[char]0x2837,[char]0x280a,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800
+);
+$COMPUTER_INFO = (Get-ComputerInfo);
+ConvertTo-HostWideString "#";
+Write-HostCentered " " -Prefix "#" -Suffix "#"
+Write-HostCentered "$($BANNER -join '')" -Prefix "#" -Suffix "#"
+Write-HostCentered " " -Prefix "#" -Suffix "#"
+Write-HostCentered "Welcome back, \\$($COMPUTER_INFO.CsUserName)." -Prefix "#" -Suffix "#";
+Write-HostCentered "$($COMPUTER_INFO.CsDomain) $(Get-Date)" -Prefix "#" -Suffix "#";
+Write-HostCentered " " -Prefix "#" -Suffix "#"
+ConvertTo-HostWideString "#";
