@@ -392,3 +392,4 @@ ConvertTo-HostWideString "#";
 
 # Add Aliases
 Set-Alias netcat "ncat"
+Set-Alias unzip "Expand-Archive"
