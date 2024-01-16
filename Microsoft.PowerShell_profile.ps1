@@ -21,6 +21,29 @@ function Clone-Object($InputObject){
  );
 }
 
+#https://stackoverflow.com/a/25682508
+function IIf($If, $Then, $Else) {
+    If ($If -IsNot "Boolean") {$_ = $If}
+    If ($If) {If ($Then -is "ScriptBlock") {&$Then} Else {$Then}}
+    Else {If ($Else -is "ScriptBlock") {&$Else} Else {$Else}}
+}
+
+function Test-IsWindows(){
+    [System.Environment]::OSVersion.Platform -ieq "Win32NT"
+}
+#Get current username
+function Get-CurrentUsername(){
+    # If Windows get from security token as environment variables can be modified.
+    if(Test-IsWindows){
+        # Windows Only
+        $name = ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name);
+        $name.substring($name.LastIndexOf('\') + 1)
+    } else {
+        [Environment]::UserName
+    }
+}
+Set-Alias Get-Username Get-CurrentUsername | Out-Null;
+
 # ANSI Color Code Function(s)
 $ANSIEscape = "$([char]27)";
 $ANSIEnd = [string]"$ANSIEscape[0m";
@@ -313,6 +336,23 @@ function Touch-File{
         echo $null >> $a
     }
 }
+Set-Alias touch "Touch-File"
+
+Set-Variable -Name GET_FILEHASH_ALGOS -Value @("SHA1", "SHA256", "SHA384", "SHA512", "MACTripleDES", "MD5", "RIPEMD160") -Option Constant -Scope Global -Force
+function Get-FileHashes([string]$filepath, [string[]]$algos = $Global:GET_FILEHASH_ALGOS, [bool]$beQuiet = $false){
+    if(-not (Test-Path $filepath)){
+        return @();
+    }
+    foreach($algo in $algos){
+        #(&{If($beQuiet){"SilentlyContinue"} Else {"Continue"}})
+        Get-FileHash -Algorithm "$($algo)" -Path "$($filepath)" -ErrorAction (IIf $beQuiet SilentlyContinue Contine)
+    }
+}
+function Get-AllFileHashes([string]$path, [string[]]$algos = $Global:GET_FILEHASH_ALGOS, [bool]$doRecursive = $false, [bool]$beQuiet = $true){
+    Get-ChildItem -Force -ErrorAction (IIf $beQuiet SilentlyContinue Contine) -Path "$($path)" (IIF $doRecursive -Recurse) | ForEach-Object {
+        Get-FileHashes "$($_)" ($algos) $beQuiet
+    }
+}
 
 # Add missing registry PS-Drives
 New-PSDrive -PSProvider Registry -Name HKCR -Root HKEY_CLASSES_ROOT -ErrorAction SilentlyContinue | Out-Null;
@@ -343,11 +383,10 @@ ConvertTo-HostWideString "#";
 Write-HostCentered " " -Prefix "#" -Suffix "#"
 Write-HostCentered "$($BANNER -join '')" -Prefix "#" -Suffix "#"
 Write-HostCentered " " -Prefix "#" -Suffix "#"
-Write-HostCentered "Welcome back, \\$($COMPUTER_INFO.CsUserName)." -Prefix "#" -Suffix "#";
+Write-HostCentered "Welcome back, \\$([System.Net.Dns]::GetHostEntry([string]$env:computername).HostName+"\"+(Get-Username))." -Prefix "#" -Suffix "#";
 Write-HostCentered "$($COMPUTER_INFO.CsDomain) $(Get-Date)" -Prefix "#" -Suffix "#";
 Write-HostCentered " " -Prefix "#" -Suffix "#"
 ConvertTo-HostWideString "#";
 
 # Add Aliases
 Set-Alias netcat "ncat"
-Set-Alias touch "Touch-File"
