@@ -333,7 +333,9 @@ function ll{
 # Creates empty-file of name: $args[$i] if not exists.
 function Touch-File{
     foreach($a in $args){
-        echo $null >> $a
+        If(!(Test-Path -Path "$($a)")){
+			New-Item -Path "$($a)" -Force
+		}
     }
 }
 Set-Alias touch "Touch-File"
