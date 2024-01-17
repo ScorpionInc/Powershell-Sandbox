@@ -216,7 +216,7 @@ function Get-BackgroundColor(){
 }
 
 # Saw many implementations for something like this but decided to roll my own.
-# e.g. Write-HostColorsString "&fb&Johnson && John's Sons'&b&"
+# e.g. Write-HostColorsString "Johnson&fb& && &fb&John's Sons'&b&" -FGColors @("Green", "Yellow") -BGColors @("Black", "DarkBlue", "DarkRed")
 Set-Variable -Name CONSOLECOLOR_VALUES -Value ([ConsoleColor]::GetValues([ConsoleColor])) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
 Set-Variable -Name CONSOLE_DEFAULT_FOREGROUND -Value ([ConsoleColor]::White) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
 Set-Variable -Name CONSOLE_DEFAULT_BACKGROUND -Value ([ConsoleColor]::DarkBlue) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
@@ -310,7 +310,7 @@ function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = @($
     }
 }
 # Returns the length of the Text without color markers.
-# e.g. Get-ColorsStringLength "Default &f&FGColor0 &f&FGColor1 &bb&BGColor1"
+# e.g. Get-ColorsStringLength "Johnson&fb& && &fb&John's Sons'&b&"
 function Get-ColorsStringLength([string[]]$Text = @(), [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&'){
     $blocks = @();
     $counter = 0;
