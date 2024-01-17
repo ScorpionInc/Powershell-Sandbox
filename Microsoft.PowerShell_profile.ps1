@@ -216,7 +216,7 @@ function Get-BackgroundColor(){
 }
 
 # Saw many implementations for something like this but decided to roll my own.
-# e.g. Write-HostColorsString "Default &f&FGColor0 &f&FGColor1 &bb&BGColor1"
+# e.g. Write-HostColorsString "&fb&Johnson && John's Sons'&b&"
 Set-Variable -Name CONSOLECOLOR_VALUES -Value ([ConsoleColor]::GetValues([ConsoleColor])) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
 Set-Variable -Name CONSOLE_DEFAULT_FOREGROUND -Value ([ConsoleColor]::White) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
 Set-Variable -Name CONSOLE_DEFAULT_BACKGROUND -Value ([ConsoleColor]::DarkBlue) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
@@ -227,7 +227,25 @@ function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = @($
         return $Text;
     }
     foreach($line in $Text){
-        $blocks += $line.split("$($ColorDelimiter)");
+        if($line.Length -le 0){
+            continue;
+        }
+        $split_lines = $line.split("$($ColorDelimiter)");
+        for($s = 0; $s -lt $split_lines.Count; $s++){
+            if(($s -le 0) -and ($split_lines[$s].Length -le 0)){
+                # Skip First empty block on each line.
+                # this is to catch entries with markers at the very beginning.
+                # e.g. &f&String
+                continue;
+            }
+            if(($s -ge ($split_lines.Count - 1)) -and ($split_lines[$s].Length -le 0)){
+                # Skip Last empty block on each line.
+                # this is to catch entries with markers at the very end.
+                # e.g. String&f&
+                continue;
+            }
+            $blocks += $split_lines[$s];
+        }
     }
     if($FGMarker -eq $BGMarker){
         Write-Error "Write-HostColorsString requires $FGMarker and $BGMarker to be unique characters.";#!Debugging
@@ -269,7 +287,7 @@ function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = @($
                 }elseif($char -eq $BGMarker){
                     if($BGColors.Count -le 0){ continue; }
                     $currentIndex = $BGColors.IndexOf($currentBG);
-                    if(($currentIndex -lt 0) -or ($currentIndex -ge $BGColors.Count)){
+                    if(($currentIndex -lt 0) -or ($currentIndex -ge ($BGColors.Count - 1))){
                         $currentBG = $BGColors[0];
                     } else {
                         $currentBG = $BGColors[$(($currentIndex + 1))];
@@ -284,9 +302,9 @@ function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = @($
             # Output Text Block
             $hasMoreBlocks = ($(($b + 1)) -lt $blocks.Count);
             if($hasMoreBlocks){
-                Write-Host -ForegroundColor $currentFG -BackgroundColor $currentBG -Separator '' -NoNewline $blocks[$b]
+                Write-Host -ForegroundColor "$($currentFG)" -BackgroundColor "$($currentBG)" -Separator '' -NoNewline $blocks[$b]
             }else{
-                Write-Host -ForegroundColor $currentFG -BackgroundColor $currentBG -Separator '' $blocks[$b]
+                Write-Host -ForegroundColor "$($currentFG)" -BackgroundColor "$($currentBG)" -Separator '' $blocks[$b]
             }
         }
     }
@@ -302,7 +320,13 @@ function Get-ColorsStringLength([string[]]$Text = @(), [char]$FGMarker = 'f', [c
             $counter = $(($counter + $line_length));
             continue;
         }
-        $blocks += $line.split("$($ColorDelimiter)");
+        $split_lines = $line.split("$($ColorDelimiter)");
+        foreach($sline in $split_lines){
+            if($sline.Length -le 0){
+                continue;
+            }
+            $blocks += $sline;
+        }
     }
     if(($ColorDelimiter.Length -le 0) -or ($FGMarker -eq $BGMarker)) {
         return $counter;
