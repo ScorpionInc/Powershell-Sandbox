@@ -90,7 +90,7 @@ function ConvertTo-ANSIColoredText([string]$StringToColor="", [ANSIFGColors]$For
     return "$(Get-ANSIColorString $ForegroundColor $BackgroundColor)$($StringToColor)$($ANSIEnd)"
 }
 
-# Color Class conversion helper functions
+# Software Drawing Color Class conversion helper functions
 function ConvertFrom-RGB-To-SDC([System.Byte]$r, [System.Byte]$g, [System.Byte]$b){
     # Helper Function
     return [System.Drawing.Color]::FromArgb(255, $r, $g, $b);
@@ -120,22 +120,22 @@ function Get-ClosestConsoleColor-SDC([System.Drawing.Color] $color) {
     if ($color.GetBrightness() -lt 0.4) {
         # Dark color
         Switch ($hue) {
-            1{  return [ConsoleColor]::DarkYellow;}
-            2{  return [ConsoleColor]::DarkGreen;}
-            3{  return [ConsoleColor]::DarkCyan;}
-            4{  return [ConsoleColor]::DarkBlue;}
-            5{  return [ConsoleColor]::DarkMagenta;}
-            default{ return [ConsoleColor]::DarkRed;}
+            1{  return [ConsoleColor]::DarkYellow; }
+            2{  return [ConsoleColor]::DarkGreen; }
+            3{  return [ConsoleColor]::DarkCyan; }
+            4{  return [ConsoleColor]::DarkBlue; }
+            5{  return [ConsoleColor]::DarkMagenta; }
+            default{ return [ConsoleColor]::DarkRed; }
         }
     }
     # Bright color
     Switch ($hue) {
-        1{  return ConsoleColor.Yellow;}
-        2{  return ConsoleColor.Green;}
-        3{  return ConsoleColor.Cyan;}
-        4{  return ConsoleColor.Blue;}
-        5{  return ConsoleColor.Magenta;}
-        default{ return ConsoleColor.Red;}
+        1{  return ConsoleColor.Yellow; }
+        2{  return ConsoleColor.Green; }
+        3{  return ConsoleColor.Cyan; }
+        4{  return ConsoleColor.Blue; }
+        5{  return ConsoleColor.Magenta; }
+        default{ return ConsoleColor.Red; }
     }
 }
 function Get-ClosestConsoleColor-SWMC([System.Windows.Media.Color] $color) {
@@ -231,8 +231,16 @@ function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = $Gl
         Write-Error "Write-HostColorsString requires $FGMarker and $BGMarker to be unique characters.";#!Debugging
         return $Text;
     }
-    $currentFG = (Get-ForegroundColor)
-    $currentBG = (Get-BackgroundColor)
+	if($FGColors.Count -le 0){
+		$currentFG = (Get-ForegroundColor)
+	} else {
+		$currentFG = $FGColors[0];
+	}
+	if($BGColors.Count -le 0){
+		$currentBG = (Get-BackgroundColor)
+	} else {
+		$currentBG = $BGColors[0];
+	}
     for($b = 0; $b -lt $blocks.Count; $b++){
         $wasBlockAValidMarker = $true
         foreach($char in $blocks[$b].ToCharArray()){
