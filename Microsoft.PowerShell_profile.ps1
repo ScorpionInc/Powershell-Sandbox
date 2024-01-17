@@ -91,6 +91,10 @@ function ConvertTo-ANSIColoredText([string]$StringToColor="", [ANSIFGColors]$For
 }
 
 # Color Class conversion helper functions
+function ConvertFrom-RGB-To-SDC([System.Byte]$r, [System.Byte]$g, [System.Byte]$b){
+    # Helper Function
+    return [System.Drawing.Color]::FromArgb(255, $r, $g, $b);
+}
 function ConvertFrom-ARGB-To-SDC([System.Byte]$a, [System.Byte]$r, [System.Byte]$g, [System.Byte]$b){
     # Helper Function
     return [System.Drawing.Color]::FromArgb($a, $r, $g, $b);
@@ -144,7 +148,7 @@ function Get-ClosestConsoleColor-ARGB([System.Byte]$a, [System.Byte]$r, [System.
 }
 function Get-ClosestConsoleColor-RGB([System.Byte]$r, [System.Byte]$g, [System.Byte]$b){
     # Helper Function
-    return Get-ClosestConsoleColor-SDC (ConvertFrom-ARGB-To-SDC 255 $r $g $b);
+    return Get-ClosestConsoleColor-SDC (ConvertFrom-RGB-To-SDC $r $g $b);
 }
 # Does argument type-checking in order to allow for basic parameter type overloading.
 # Returns ConsoleColor nearest to input color.
@@ -166,6 +170,11 @@ function Get-ClosestConsoleColor{
         # Handle three Arguments
         if(($args[0].GetType() -is [System.Byte].GetType()) -and ($args[1].GetType() -is [System.Byte].GetType()) -and ($args[2].GetType() -is [System.Byte].GetType())){
             return (Get-ClosestConsoleColor-RGB "$($args[0])" "$($args[1])" "$($args[2])");
+        }
+    }elseif($argc -eq 4){
+        # Handle four Arguments
+        if(($args[0].GetType() -is [System.Byte].GetType()) -and ($args[1].GetType() -is [System.Byte].GetType()) -and ($args[2].GetType() -is [System.Byte].GetType()) -and ($args[3].GetType() -is [System.Byte].GetType())){
+            return (Get-ClosestConsoleColor-ARGB "$($args[0])" "$($args[1])" "$($args[2])" "$($args[3])");
         }
     }#else{
     # Handle unknown number of Argument(s)
