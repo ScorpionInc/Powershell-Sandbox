@@ -380,9 +380,9 @@ function ConvertTo-HostCenteredString([string]$Message="", [string]$Prefix = "",
     }
     $string = $string + $Suffix;
     <#
-    Write-Host "Message: '$($Message)'.";#Debugging
     Write-Host "UIW: $($UI_Width)";#Debugging
     Write-Host "UIHW: $($UI_HalfWidth)";#Debugging
+    Write-Host "Message: '$($Message)'[$($Message.Length)].";#Debugging
     Write-Host "MW: $($Message_Width)";#Debugging
     Write-Host "MHW: $($Message_HalfWidth)";#Debugging
     Write-Host "PW: $($Prefix_Width)`t SW: $($Suffix_Width) `t SS: $($Spacer_Width)";#Debugging
