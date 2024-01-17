@@ -28,10 +28,15 @@ function IIf($If, $Then, $Else) {
     Else {If ($Else -is "ScriptBlock") {&$Else} Else {$Else}}
 }
 
+# Returns true when script is being run within the ISE environment.
+function Get-IsISE(){
+    return (Test-Path variable:global:psISE);
+}
+# Returns true when Platform is DOS-Based.
 function Test-IsWindows(){
     [System.Environment]::OSVersion.Platform -ieq "Win32NT"
 }
-#Get current username
+# Returns current username
 function Get-CurrentUsername(){
     # If Windows get from security token as environment variables can be modified.
     if(Test-IsWindows){
@@ -45,6 +50,7 @@ function Get-CurrentUsername(){
 Set-Alias Get-Username Get-CurrentUsername | Out-Null;
 
 # ANSI Color Code Function(s)
+# Reference: Get-PSReadLineOption(v5.1)
 $ANSIEscape = "$([char]27)";
 $ANSIEnd = [string]"$ANSIEscape[0m";
 enum ANSIFGColors {
@@ -82,6 +88,224 @@ function Get-ANSIColorString([ANSIFGColors]$ForegroundColor=[ANSIFGColors]::None
 # Example: ConvertTo-ANSIColoredText "Text to be colored." Cyan Red
 function ConvertTo-ANSIColoredText([string]$StringToColor="", [ANSIFGColors]$ForegroundColor=[ANSIFGColors]::None, [ANSIBGColors]$BackgroundColor=[ANSIBGColors]::None){
     return "$(Get-ANSIColorString $ForegroundColor $BackgroundColor)$($StringToColor)$($ANSIEnd)"
+}
+
+# Color Class conversion helper functions
+function ConvertFrom-ARGB-To-SDC([System.Byte]$a, [System.Byte]$r, [System.Byte]$g, [System.Byte]$b){
+    # Helper Function
+    return [System.Drawing.Color]::FromArgb($a, $r, $g, $b);
+}
+function ConvertFrom-SWMC-To-SDC([System.Windows.Media.Color] $color){
+    # Helper Function
+    #return [System.Drawing.ColorConverter]::new().ConvertFromString($color.ToString())
+    return (ConvertFrom-ARGB-To-SDC $color.A $color.R $color.G $color.B);
+}
+
+# Modified from source: https://stackoverflow.com/a/25229498
+function Get-ClosestConsoleColor-SDC([System.Drawing.Color] $color) {
+    if ($color.GetSaturation() -lt 0.5) {
+        # We have a grayish color
+        Switch ([int]($color.GetBrightness() * 3.5)) {
+            0{ return [ConsoleColor]::Black; }
+            1{ return [ConsoleColor]::DarkGray; }
+            2{ return [ConsoleColor]::Gray; }
+            default{ return [ConsoleColor]::White; }
+        }
+    }
+    $hue = [int]([Math]::Round($color.GetHue() / 60, [MidpointRounding]::AwayFromZero));
+    if ($color.GetBrightness() -lt 0.4) {
+        # Dark color
+        Switch ($hue) {
+            1{  return [ConsoleColor]::DarkYellow;}
+            2{  return [ConsoleColor]::DarkGreen;}
+            3{  return [ConsoleColor]::DarkCyan;}
+            4{  return [ConsoleColor]::DarkBlue;}
+            5{  return [ConsoleColor]::DarkMagenta;}
+            default{ return [ConsoleColor]::DarkRed;}
+        }
+    }
+    # Bright color
+    Switch ($hue) {
+        1{  return ConsoleColor.Yellow;}
+        2{  return ConsoleColor.Green;}
+        3{  return ConsoleColor.Cyan;}
+        4{  return ConsoleColor.Blue;}
+        5{  return ConsoleColor.Magenta;}
+        default{ return ConsoleColor.Red;}
+    }
+}
+function Get-ClosestConsoleColor-SWMC([System.Windows.Media.Color] $color) {
+    # Helper Function
+    return Get-ClosestConsoleColor-SDC (ConvertFrom-SWMC-To-SDC $color);
+}
+function Get-ClosestConsoleColor-ARGB([System.Byte]$a, [System.Byte]$r, [System.Byte]$g, [System.Byte]$b){
+    # Helper Function
+    return Get-ClosestConsoleColor-SDC (ConvertFrom-ARGB-To-SDC $a $r $g $b);
+}
+function Get-ClosestConsoleColor-RGB([System.Byte]$r, [System.Byte]$g, [System.Byte]$b){
+    # Helper Function
+    return Get-ClosestConsoleColor-SDC (ConvertFrom-ARGB-To-SDC 255 $r $g $b);
+}
+# Does argument type-checking in order to allow for basic parameter type overloading.
+# Returns ConsoleColor nearest to input color.
+# Returns [ConsoleColor]0 on error.
+function Get-ClosestConsoleColor{
+    $argc = $args.Count;
+    if($argc -le 0){
+        # No Arguments supplied
+        Write-Host "[WARN]: Get-ClosestConsoleColor failed due to lack of parameters!";#!Debugging
+        return [ConsoleColor]0;
+    }elseif($argc -eq 1){
+        # Handle one Argument
+        if($args[0].GetType() -is [System.Drawing.Color].GetType()){
+            return (Get-ClosestConsoleColor-SDC $args[0]);
+        }elseif($args[0].GetType() -is [System.Windows.Media.Color].GetType()){
+            return (Get-ClosestConsoleColor-SWMC $args[0]);
+        }
+    }elseif($argc -eq 3){
+        # Handle three Arguments
+        if(($args[0].GetType() -is [System.Byte].GetType()) -and ($args[1].GetType() -is [System.Byte].GetType()) -and ($args[2].GetType() -is [System.Byte].GetType())){
+            return (Get-ClosestConsoleColor-RGB "$($args[0])" "$($args[1])" "$($args[2])");
+        }
+    }#else{
+    # Handle unknown number of Argument(s)
+    Write-Host "[WARN]: Get-ClosestConsoleColor failed due to either unexpected number of parameters[$($argc)] or bad type(s)!";#!Debugging
+    return [ConsoleColor]0;
+}
+
+# Returns current terminal foreground color.
+function Get-ForegroundColor(){
+    if(Get-IsISE){
+        $colorContext = $Host.PrivateData.ConsolePaneForegroundColor;
+        #Write-Host "[DEBUG]: Before color conversion ISE Foreground color: $($colorContext)";#!Debugging
+        $color = (Get-ClosestConsoleColor ([System.Byte]$colorContext.R) ([System.Byte]$colorContext.G) ([System.Byte]$colorContext.B));
+        #Write-Host "[DEBUG]: After color conversion ISE Foreground color: $($color)";#!Debugging
+        return $color;
+    } else {
+        $color = (Get-Host).UI.RawUI.ForegroundColor;
+        if($color -lt 0){
+            return [System.Console]::ForegroundColor;
+        }
+        return $color;
+    }
+}
+# Returns current terminal background color.
+function Get-BackgroundColor(){
+    if(Get-IsISE){
+        $colorContext = $Host.PrivateData.ConsolePaneBackgroundColor;
+        #Write-Host "[DEBUG]: Before color conversion ISE Background color: $($colorContext)";#!Debugging
+        $color = (Get-ClosestConsoleColor ([System.Byte]$colorContext.R) ([System.Byte]$colorContext.G) ([System.Byte]$colorContext.B));
+        #Write-Host "[DEBUG]: After color conversion ISE Background color: $($color)";#!Debugging
+        return $color;
+    } else {
+        $color = (Get-Host).UI.RawUI.BackgroundColor;
+        if($color -lt 0){
+            return [System.Console]::BackgroundColor;
+        }
+        return $color;
+    }
+}
+
+# Saw many implementations for something like this but decided to roll my own.
+# e.g. Write-HostColorsString "Default &f&FGColor0 &f&FGColor1 &bb&BGColor1"
+Set-Variable -Name CONSOLECOLOR_VALUES -Value ([ConsoleColor]::GetValues([ConsoleColor])) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
+function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = $Global:CONSOLECOLOR_VALUES, [ConsoleColor[]]$BGColors = $Global:CONSOLECOLOR_VALUES, [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&'){
+    $blocks = @();
+    if($ColorDelimiter.Length -le 0){
+        Write-Error "Write-HostColorsString is missing required value for character $ColorDelimiter.";#!Debugging
+        return $Text;
+    }
+    foreach($line in $Text){
+        $blocks += $line.split("$($ColorDelimiter)");
+    }
+    if($FGMarker -eq $BGMarker){
+        Write-Error "Write-HostColorsString requires $FGMarker and $BGMarker to be unique characters.";#!Debugging
+        return $Text;
+    }
+    $currentFG = (Get-ForegroundColor)
+    $currentBG = (Get-BackgroundColor)
+    for($b = 0; $b -lt $blocks.Count; $b++){
+        $wasBlockAValidMarker = $true
+        foreach($char in $blocks[$b].ToCharArray()){
+            if(($char -ne $FGMarker) -and ($char -ne $BGMarker)){
+                $wasBlockAValidMarker = $false;
+                break;
+            }
+        }
+        if($blocks[$b].Length -le 0){
+            $wasBlockAValidMarker = $false;
+            $blocks[$b] = "$($ColorDelimiter)";
+        }
+        if($wasBlockAValidMarker){
+            # Process Marker
+            foreach($char in $blocks[$b].ToCharArray()){
+                if($char -eq $FGMarker){
+                    if($FGColors.Count -le 0){ continue; }
+                    $currentIndex = $FGColors.IndexOf($currentFG);
+                    if(($currentIndex -lt 0) -or ($currentIndex -ge $(($FGColors.Count - 1)))){
+                        $currentFG = $FGColors[0];
+                    } else {
+                        $currentFG = $FGColors[$(($currentIndex + 1))];
+                    }
+                }elseif($char -eq $BGMarker){
+                    if($BGColors.Count -le 0){ continue; }
+                    $currentIndex = $BGColors.IndexOf($currentBG);
+                    if(($currentIndex -lt 0) -or ($currentIndex -ge $BGColors.Count)){
+                        $currentBG = $BGColors[0];
+                    } else {
+                        $currentBG = $BGColors[$(($currentIndex + 1))];
+                    }
+                }else{
+                    #How did you get here?!?
+                    break;
+                }
+            }
+            continue;
+        } else {
+            # Output Text Block
+            $hasMoreBlocks = ($(($b + 1)) -lt $blocks.Count);
+            if($hasMoreBlocks){
+                Write-Host -ForegroundColor $currentFG -BackgroundColor $currentBG -NoNewline $blocks[$b]
+            }else{
+                Write-Host -ForegroundColor $currentFG -BackgroundColor $currentBG $blocks[$b]
+            }
+        }
+    }
+}
+# Returns the length of the Text without color markers.
+# e.g. Get-ColorsStringLength "Default &f&FGColor0 &f&FGColor1 &bb&BGColor1"
+function Get-ColorsStringLength([string[]]$Text, [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&'){
+    $blocks = @();
+    $counter = 0;
+    foreach($line in $Text){
+        $blocks += $line.split("$($ColorDelimiter)");
+        if($ColorDelimiter.Length -le 0) {
+            $counter = $(($counter + $line.Length));
+        }
+    }
+    if(($ColorDelimiter.Length -le 0) -or ($FGMarker -eq $BGMarker)) {
+        return $counter;
+    }
+    for($b = 0; $b -lt $blocks.Count; $b++){
+        $wasBlockAValidMarker = $true
+        foreach($char in $blocks[$b].ToCharArray()){
+            if(($char -ne $FGMarker) -and ($char -ne $BGMarker)){
+                $wasBlockAValidMarker = $false;
+                break;
+            }
+        }
+        if($blocks[$b].Length -le 0){
+            $wasBlockAValidMarker = $false;
+            $blocks[$b] = "$($ColorDelimiter)";
+        }
+        if($wasBlockAValidMarker){
+            # Ignore Marker(s)
+        } else {
+            # Output Text Block
+            $counter = $(($counter + $blocks[$b].Length));
+        }
+    }
+    return $counter;
 }
 
 # Returns the count of characters in a row of the terminal(if possible).
