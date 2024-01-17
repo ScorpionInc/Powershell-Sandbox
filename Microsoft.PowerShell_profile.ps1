@@ -608,6 +608,10 @@ New-PSDrive -PSProvider Registry -Name HKCR -Root HKEY_CLASSES_ROOT -ErrorAction
 New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS -ErrorAction SilentlyContinue | Out-Null;
 New-PSDrive -PSProvider Registry -Name HKCC -Root HKEY_CURRENT_CONFIG -ErrorAction SilentlyContinue | Out-Null;
 
+# Add Aliases
+Set-Alias netcat "ncat"
+Set-Alias unzip "Expand-Archive"
+
 # Define and Display Profile Banner.
 function Write-HostProfileBanner(){
     # Text-Art Sourced/Modified from: https://emojicombos.com/scorpion-ascii-art
@@ -642,8 +646,7 @@ function Write-HostProfileBanner(){
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines " ";
     Write-Host -ForegroundColor $BANNER_FOREGROUND_PALETTE[0] -BackgroundColor $BANNER_BACKGROUND_PALETTE[0] $BANNER_HWS;
 }
-Write-HostProfileBanner;
 
-# Add Aliases
-Set-Alias netcat "ncat"
-Set-Alias unzip "Expand-Archive"
+# Clear anything left on the terminal and print the banner.
+Clear-Host;
+Write-HostProfileBanner;
