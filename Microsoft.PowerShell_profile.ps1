@@ -218,7 +218,9 @@ function Get-BackgroundColor(){
 # Saw many implementations for something like this but decided to roll my own.
 # e.g. Write-HostColorsString "Default &f&FGColor0 &f&FGColor1 &bb&BGColor1"
 Set-Variable -Name CONSOLECOLOR_VALUES -Value ([ConsoleColor]::GetValues([ConsoleColor])) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
-function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = $Global:CONSOLECOLOR_VALUES, [ConsoleColor[]]$BGColors = $Global:CONSOLECOLOR_VALUES, [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&'){
+Set-Variable -Name CONSOLE_DEFAULT_FOREGROUND -Value ([ConsoleColor]::White) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
+Set-Variable -Name CONSOLE_DEFAULT_BACKGROUND -Value ([ConsoleColor]::DarkBlue) -Option Constant -Scope Global -Force -ErrorAction SilentlyContinue;
+function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = @($Global:CONSOLE_DEFAULT_FOREGROUND), [ConsoleColor[]]$BGColors = @($Global:CONSOLE_DEFAULT_BACKGROUND), [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&'){
     $blocks = @();
     if($ColorDelimiter.Length -le 0){
         Write-Error "Write-HostColorsString is missing required value for character $ColorDelimiter.";#!Debugging
