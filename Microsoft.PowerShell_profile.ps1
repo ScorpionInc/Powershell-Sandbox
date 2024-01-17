@@ -284,9 +284,9 @@ function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = @($
             # Output Text Block
             $hasMoreBlocks = ($(($b + 1)) -lt $blocks.Count);
             if($hasMoreBlocks){
-                Write-Host -ForegroundColor $currentFG -BackgroundColor $currentBG -NoNewline $blocks[$b]
+                Write-Host -ForegroundColor $currentFG -BackgroundColor $currentBG -Separator '' -NoNewline $blocks[$b]
             }else{
-                Write-Host -ForegroundColor $currentFG -BackgroundColor $currentBG $blocks[$b]
+                Write-Host -ForegroundColor $currentFG -BackgroundColor $currentBG -Separator '' $blocks[$b]
             }
         }
     }
@@ -297,16 +297,18 @@ function Get-ColorsStringLength([string[]]$Text = @(), [char]$FGMarker = 'f', [c
     $blocks = @();
     $counter = 0;
     foreach($line in $Text){
-        $blocks += $line.split("$($ColorDelimiter)");
-        if($ColorDelimiter.Length -le 0) {
-            $counter = $(($counter + $line.Length));
+        $line_length = $line.ToCharArray().Length;
+        if(($ColorDelimiter.Length -le 0) -or ($line_length -le 0)) {
+            $counter = $(($counter + $line_length));
+            continue;
         }
+        $blocks += $line.split("$($ColorDelimiter)");
     }
     if(($ColorDelimiter.Length -le 0) -or ($FGMarker -eq $BGMarker)) {
         return $counter;
     }
     for($b = 0; $b -lt $blocks.Count; $b++){
-        $wasBlockAValidMarker = $true
+        $wasBlockAValidMarker = $true;
         foreach($char in $blocks[$b].ToCharArray()){
             if(($char -ne $FGMarker) -and ($char -ne $BGMarker)){
                 $wasBlockAValidMarker = $false;
@@ -357,17 +359,18 @@ function ConvertTo-HostCenteredString([string]$Message="", [string]$Prefix = "",
     $Left_Buffer      = ($UI_HalfWidth - $Message_HalfWidth) - $Prefix_Width;
     $Suffix_Width     = (Get-ColorsStringLength -FGMarker $FGMarker -BGMarker $BGMarker -ColorDelimiter $ColorDelimiter -Text $Suffix);
     $Right_Buffer     = ($UI_HalfWidth - $Message_HalfWidth) - $Suffix_Width;
+    $Spacer_Width     = (Get-ColorsStringLength -FGMarker $FGMarker -BGMarker $BGMarker -ColorDelimiter $ColorDelimiter -Text $Spacer);
     $string = $Prefix;
     if($Spacer.Length -ile 0){
         # Prevent divide by zero.
         $Spacer = (""+[char]0x2800);
     }
-    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($Left_Buffer / $Spacer.Length)); $i++)
+    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($Left_Buffer / $Spacer_Width)); $i++)
     {
         $string = $string + "$($Spacer)";
     }
-    $string = $string + "$($Message)";
-    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($Right_Buffer / $Spacer.Length)); $i++)
+    $string = ($string + "$($Message)");
+    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($Right_Buffer / $Spacer_Width)); $i++)
     {
         $string = $string + "$($Spacer)";
     }
@@ -377,11 +380,14 @@ function ConvertTo-HostCenteredString([string]$Message="", [string]$Prefix = "",
     }
     $string = $string + $Suffix;
     <#
+    Write-Host "Message: '$($Message)'.";#Debugging
     Write-Host "UIW: $($UI_Width)";#Debugging
     Write-Host "UIHW: $($UI_HalfWidth)";#Debugging
+    Write-Host "MW: $($Message_Width)";#Debugging
     Write-Host "MHW: $($Message_HalfWidth)";#Debugging
+    Write-Host "PW: $($Prefix_Width)`t SW: $($Suffix_Width) `t SS: $($Spacer_Width)";#Debugging
     Write-Host "Left: $($Left_Buffer)`t Right: $($Right_Buffer)";#Debugging
-    Write-Host "Result: $($string.Length)";#Debugging
+    Write-Host "(PW + Left + MW + Right + SW) Result: $($string.Length)";#Debugging
     #>
     return $string
 }
@@ -403,7 +409,7 @@ function Write-HostCentered([string]$Prefix = "", [string]$Suffix = "", [string]
     # Execute Task(s)
     foreach($line in $Processed_Lines){
         $nextString = (ConvertTo-HostCenteredString -Message "$($line)" -Prefix "$($Prefix)" -Suffix "$($Suffix)" -Spacer "$($Spacer)" -FGMarker "$($FGMarker)" -BGMarker "$($BGMarker)" -ColorDelimiter "$($ColorDelimiter)");
-        Write-HostColorsString -Text "$($nextString)" -FGColors ($FGColors) -BGColors ($BGColors) -FGMarker "$($FGMarker)" -BGMarker "$($BGMarker)" -ColorDelimiter "$($ColorDelimiter)"
+        Write-HostColorsString -Text "$($nextString)" -FGColors ($FGColors) -BGColors ($BGColors) -FGMarker "$($FGMarker)" -BGMarker "$($BGMarker)" -ColorDelimiter "$($ColorDelimiter)";
     }
 }
 
