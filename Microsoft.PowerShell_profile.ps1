@@ -293,7 +293,7 @@ function Write-HostColorsString([string[]]$Text, [ConsoleColor[]]$FGColors = @($
 }
 # Returns the length of the Text without color markers.
 # e.g. Get-ColorsStringLength "Default &f&FGColor0 &f&FGColor1 &bb&BGColor1"
-function Get-ColorsStringLength([string[]]$Text, [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&'){
+function Get-ColorsStringLength([string[]]$Text = @(), [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&'){
     $blocks = @();
     $counter = 0;
     foreach($line in $Text){
@@ -333,10 +333,11 @@ function Get-HostUIWidth{
     return([Math]::Max(0, $Host.UI.RawUI.BufferSize.Width - 1));
 }
 # Converts string pattern, into a string as wide as the host UI(if possible).
-function ConvertTo-HostWideString([string]$Pattern="#"){
+function ConvertTo-HostWideString([string]$Pattern="#", [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&'){
     $UI_Width = (Get-HostUIWidth);
+    $Pattern_Length = (Get-ColorsStringLength -FGMarker $FGMarker -BGMarker $BGMarker -ColorDelimiter $ColorDelimiter -Text $Pattern);
     $string = "";
-    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($UI_Width / $Pattern.Length)); $i++){
+    for($i = 0; $i -lt [Math]::Max(0, [Math]::Floor($UI_Width / $Pattern_Length)); $i++){
         $string = $string + $Pattern;
     }
     $remainder = $UI_Width - $string.Length;
@@ -346,14 +347,16 @@ function ConvertTo-HostWideString([string]$Pattern="#"){
     return($string);
 }
 # Converts string with customizable prefix, suffix and spacer to a string centered on host UI(if possible).
-function ConvertTo-HostCenteredString
+function ConvertTo-HostCenteredString([string]$Message="", [string]$Prefix="", [string]$Suffix="", [string]$Spacer=" ", [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&')
 {
-    param([string]$Message="", [string]$Prefix="", [string]$Suffix="", [string]$Spacer=" ")
     $UI_Width         = (Get-HostUIWidth);
     $UI_HalfWidth     = ($UI_Width / 2);
-    $Message_HalfWidth= ($Message.Length / 2);
-    $Left_Buffer      = ($UI_HalfWidth - $Message_HalfWidth) - $Prefix.Length;
-    $Right_Buffer     = ($UI_HalfWidth - $Message_HalfWidth) - $Suffix.Length;
+    $Message_Width    = (Get-ColorsStringLength -FGMarker $FGMarker -BGMarker $BGMarker -ColorDelimiter $ColorDelimiter -Text $Message);
+    $Message_HalfWidth= ($Message_Width / 2);
+    $Prefix_Width     = (Get-ColorsStringLength -FGMarker $FGMarker -BGMarker $BGMarker -ColorDelimiter $ColorDelimiter -Text $Prefix);
+    $Left_Buffer      = ($UI_HalfWidth - $Message_HalfWidth) - $Prefix_Width;
+    $Suffix_Width     = (Get-ColorsStringLength -FGMarker $FGMarker -BGMarker $BGMarker -ColorDelimiter $ColorDelimiter -Text $Suffix);
+    $Right_Buffer     = ($UI_HalfWidth - $Message_HalfWidth) - $Suffix_Width;
     $string = $Prefix;
     if($Spacer.Length -ile 0){
         # Prevent divide by zero.
@@ -383,53 +386,24 @@ function ConvertTo-HostCenteredString
     return $string
 }
 # Writes lines with optional custom prefix, suffix and spacer to Host/Console.
-function Write-HostCentered{
-    # Variable(s)
-    $Prefix = "";
-    $Suffix = "";
-    $Spacer = " ";
-    $Lines  = @();
-    # Process all function arguments
-    $pargs = @();
-    # Split string inputs into multiple entries by New line character(s).
-    foreach($a in $args){
+function Write-HostCentered([string]$Prefix = "", [string]$Suffix = "", [string]$Spacer = ""+[char]0x2800, [ConsoleColor[]]$FGColors = $Global:CONSOLECOLOR_VALUES, [ConsoleColor[]]$BGColors = $Global:CONSOLECOLOR_VALUES, [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&', [string[]]$Lines = @()){
+    # Pre-processing
+    $Processed_Lines = @();
+    # Split string inputs into multiple entries by NewLine character(s).
+    foreach($a in $Lines){
         if($a.GetType().Name -eq "String"){
             $mLines = $a.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries);
             foreach($l in $mLines){
-                $pargs += $l.Trim();
+                $Processed_Lines += $l.Trim();
             }
             continue;
         }
-        $pargs += $a;
-    }
-    # Process flags being passed to specify optional settings like prefix, suffix, and spacer.
-    $skip = 0;
-    for($i = 0; $i -lt $pargs.Length; $i++){
-        if($skip -igt 0){
-            $skip = $(($skip - 1));
-            continue;
-        }
-        if($pargs[$i] -ieq "-Prefix"){
-            $skip = $(($skip + 1));
-            $Prefix = "$($pargs[$(($i+1))])";
-            continue;
-        }
-        if($pargs[$i] -ieq "-Suffix"){
-            $skip = $(($skip + 1));
-            $Suffix = "$($pargs[$(($i+1))])";
-            continue;
-        }
-        if($pargs[$i] -ieq "-Spacer"){
-            $skip = $(($skip + 1));
-            $Spacer = "$($pargs[$(($i+1))])";
-            continue;
-        }
-        $Lines += "$($pargs[$i])";
+        $Processed_Lines += $a;
     }
     # Execute Task(s)
-    foreach($line in $Lines){
-        $nextString = (ConvertTo-HostCenteredString "$($line)" -Prefix "$($Prefix)" -Suffix "$($Suffix)" -Spacer "$($Spacer)");
-        Write-Host "$($nextString)";
+    foreach($line in $Processed_Lines){
+        $nextString = (ConvertTo-HostCenteredString -Message "$($line)" -Prefix "$($Prefix)" -Suffix "$($Suffix)" -Spacer "$($Spacer)" -FGMarker "$($FGMarker)" -BGMarker "$($BGMarker)" -ColorDelimiter "$($ColorDelimiter)");
+        Write-HostColorsString -Text "$($nextString)" -FGColors ($FGColors) -BGColors ($BGColors) -FGMarker "$($FGMarker)" -BGMarker "$($BGMarker)" -ColorDelimiter "$($ColorDelimiter)"
     }
 }
 
@@ -607,31 +581,33 @@ New-PSDrive -PSProvider Registry -Name HKCC -Root HKEY_CURRENT_CONFIG -ErrorActi
 # Define and Display Profile Banner.
 # Text-Art Sourced/Modified from: https://emojicombos.com/scorpion-ascii-art
 $BANNER = @(
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2840,[char]0x28f4,[char]0x28f6,[char]0x28f6,[char]0x28f6,[char]0x2866,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28a0,[char]0x28ff,[char]0x28e7,[char]0x28dd,[char]0x281b,[char]0x281b,[char]0x280b,[char]0x28be,[char]0x28ff,[char]0x28e6,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28e0,[char]0x2859,[char]0x283f,[char]0x285f,[char]0x280b,[char]0x2880,[char]0x28c0,[char]0x28c0,[char]0x28cc,[char]0x28fd,[char]0x28ef,[char]0x2877,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x2801,[char]0x2810,[char]0x2809,[char]0x2808,[char]0x28bb,[char]0x28f7,[char]0x287b,[char]0x28ff,[char]0x2807,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28e9,[char]0x28f6,[char]0x28e7,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2880,[char]0x28f8,[char]0x28ff,[char]0x283f,[char]0x289b,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28ff,[char]0x28ef,[char]0x28f7,[char]0x28f6,[char]0x28e6,[char]0x28e0,[char]0x287e,[char]0x28a1,[char]0x28fe,[char]0x28bf,[char]0x287f,[char]0x28ff,[char]0x28e6,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2880,[char]0x28e0,[char]0x287f,[char]0x283b,[char]0x28c6,[char]0x28d8,[char]0x28b8,[char]0x28ff,[char]0x28fb,[char]0x28fe,[char]0x28ff,[char]0x2877,[char]0x28db,[char]0x2835,[char]0x289f,[char]0x28f1,[char]0x287e,[char]0x28fb,[char]0x28f7,[char]0x28ff,[char]0x28b6,[char]0x28e4,[char]0x28f4,[char]0x28e4,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x28f8,[char]0x281f,[char]0x28e1,[char]0x28e4,[char]0x28e4,[char]0x28ec,[char]0x28ff,[char]0x28e3,[char]0x28c5,[char]0x28ff,[char]0x287f,[char]0x28f7,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28de,[char]0x280b,[char]0x28d0,[char]0x28fb,[char]0x280f,[char]0x28dc,[char]0x281b,[char]0x28bf,[char]0x28ff,[char]0x28fd,[char]0x28f7,[char]0x28c4,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2880,[char]0x2847,[char]0x2890,[char]0x28ff,[char]0x2881,[char]0x2874,[char]0x283d,[char]0x28f7,[char]0x28fe,[char]0x287f,[char]0x283b,[char]0x28f7,[char]0x28f9,[char]0x285b,[char]0x283f,[char]0x283f,[char]0x28ed,[char]0x28dc,[char]0x285b,[char]0x2803,[char]0x2800,[char]0x2839,[char]0x2824,[char]0x2800,[char]0x2818,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28f7,[char]0x000a,
-[char]0x2810,[char]0x2809,[char]0x2800,[char]0x2808,[char]0x28ff,[char]0x28b8,[char]0x28c7,[char]0x28b0,[char]0x287e,[char]0x283f,[char]0x283f,[char]0x281b,[char]0x281b,[char]0x280b,[char]0x2865,[char]0x28be,[char]0x2803,[char]0x28cd,[char]0x2809,[char]0x283f,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28f0,[char]0x28ff,[char]0x283f,[char]0x281f,[char]0x289b,[char]0x284b,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28fa,[char]0x2898,[char]0x284f,[char]0x28b8,[char]0x281f,[char]0x2800,[char]0x2890,[char]0x28ed,[char]0x28bb,[char]0x283f,[char]0x28ff,[char]0x280f,[char]0x2801,[char]0x2808,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x283f,[char]0x280b,[char]0x2800,[char]0x2880,[char]0x28fe,[char]0x2807,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2808,[char]0x2801,[char]0x2800,[char]0x28f9,[char]0x2839,[char]0x28c6,[char]0x28a0,[char]0x28ff,[char]0x28ff,[char]0x28c4,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2820,[char]0x281f,[char]0x2801,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2818,[char]0x2801,[char]0x2800,[char]0x287e,[char]0x2838,[char]0x28ff,[char]0x28df,[char]0x28ff,[char]0x28f7,[char]0x28f6,[char]0x28f6,[char]0x28e4,[char]0x28c0,[char]0x28c0,[char]0x28c0,[char]0x28c0,[char]0x28c0,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x28bb,[char]0x28b8,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x287f,[char]0x281f,[char]0x283f,[char]0x281b,[char]0x281f,[char]0x2809,[char]0x2803,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
-[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2819,[char]0x281b,[char]0x281b,[char]0x2809,[char]0x283a,[char]0x2837,[char]0x28a6,[char]0x2836,[char]0x2837,[char]0x280a,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x2840,[char]0x28f4,[char]0x28f6,[char]0x28f6,[char]0x28f6,[char]0x2866,"&ffff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28a0,[char]0x28ff,[char]0x28e7,[char]0x28dd,[char]0x281b,[char]0x281b,[char]0x280b,[char]0x28be,[char]0x28ff,[char]0x28e6,"&ffff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28e0,[char]0x2859,[char]0x283f,[char]0x285f,[char]0x280b,"&fff&",[char]0x2880,[char]0x28c0,"&ff&",[char]0x28c0,[char]0x28cc,[char]0x28fd,[char]0x28ef,[char]0x2877,"&ffff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x2801,"&ff&",[char]0x2810,"&f&",[char]0x2809,[char]0x2808,"&ff&",[char]0x28bb,[char]0x28f7,[char]0x287b,[char]0x28ff,[char]0x2807,"&ffff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28e9,[char]0x28f6,[char]0x28e7,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2880,[char]0x28f8,[char]0x28ff,[char]0x283f,[char]0x289b,[char]0x2840,"&ffff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28ff,[char]0x28ef,[char]0x28f7,[char]0x28f6,[char]0x28e6,[char]0x28e0,[char]0x287e,[char]0x28a1,[char]0x28fe,[char]0x28bf,[char]0x287f,[char]0x28ff,[char]0x28e6,[char]0x2840,"&ffff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x2880,[char]0x28e0,[char]0x287f,[char]0x283b,[char]0x28c6,[char]0x28d8,[char]0x28b8,[char]0x28ff,[char]0x28fb,[char]0x28fe,[char]0x28ff,[char]0x2877,[char]0x28db,[char]0x2835,[char]0x289f,[char]0x28f1,[char]0x287e,[char]0x28fb,[char]0x28f7,[char]0x28ff,[char]0x28b6,[char]0x28e4,[char]0x28f4,[char]0x28e4,"&fffffffff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,"&f&",[char]0x28f8,[char]0x281f,[char]0x28e1,[char]0x28e4,[char]0x28e4,[char]0x28ec,[char]0x28ff,[char]0x28e3,[char]0x28c5,[char]0x28ff,[char]0x287f,[char]0x28f7,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28de,[char]0x280b,[char]0x28d0,[char]0x28fb,[char]0x280f,[char]0x28dc,[char]0x281b,[char]0x28bf,[char]0x28ff,[char]0x28fd,[char]0x28f7,[char]0x28c4,"&ffff&",[char]0x2800,[char]0x000a,
+[char]0x2800,"&f&",[char]0x2880,[char]0x2847,[char]0x2890,[char]0x28ff,[char]0x2881,[char]0x2874,[char]0x283d,[char]0x28f7,[char]0x28fe,[char]0x287f,[char]0x283b,[char]0x28f7,[char]0x28f9,[char]0x285b,[char]0x283f,[char]0x283f,[char]0x28ed,[char]0x28dc,[char]0x285b,[char]0x2803,[char]0x2800,[char]0x2839,[char]0x2824,[char]0x2800,[char]0x2818,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28f7,"&ffff&",[char]0x000a,
+"&f&",[char]0x2810,[char]0x2809,[char]0x2800,[char]0x2808,[char]0x28ff,[char]0x28b8,[char]0x28c7,[char]0x28b0,[char]0x287e,[char]0x283f,[char]0x283f,[char]0x281b,[char]0x281b,[char]0x280b,[char]0x2865,[char]0x28be,[char]0x2803,[char]0x28cd,[char]0x2809,[char]0x283f,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28f0,[char]0x28ff,[char]0x283f,[char]0x281f,[char]0x289b,[char]0x284b,"&fff&",[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28fa,[char]0x2898,[char]0x284f,[char]0x28b8,[char]0x281f,[char]0x2800,[char]0x2890,[char]0x28ed,[char]0x28bb,[char]0x283f,[char]0x28ff,[char]0x280f,[char]0x2801,[char]0x2808,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x283f,[char]0x280b,[char]0x2800,[char]0x2880,[char]0x28fe,[char]0x2807,"&fff&",[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x2808,[char]0x2801,[char]0x2800,[char]0x28f9,[char]0x2839,[char]0x28c6,[char]0x28a0,[char]0x28ff,[char]0x28ff,[char]0x28c4,[char]0x2840,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x2820,[char]0x281f,[char]0x2801,"&fff&",[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x2818,[char]0x2801,[char]0x2800,[char]0x287e,[char]0x2838,[char]0x28ff,[char]0x28df,[char]0x28ff,[char]0x28f7,[char]0x28f6,[char]0x28f6,[char]0x28e4,"&f&",[char]0x28c0,[char]0x28c0,[char]0x28c0,[char]0x28c0,[char]0x28c0,"&fff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28bb,[char]0x28b8,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28ff,"&f&",[char]0x287f,[char]0x281f,[char]0x283f,[char]0x281b,[char]0x281f,[char]0x2809,[char]0x2803,"&fff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x000a,
+[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x2819,[char]0x281b,[char]0x281b,[char]0x2809,"&f&",[char]0x283a,[char]0x2837,[char]0x28a6,[char]0x2836,[char]0x2837,[char]0x280a,"&fff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800
 );
 $COMPUTER_INFO = (Get-ComputerInfo);
-ConvertTo-HostWideString "#";
-Write-HostCentered " " -Prefix "#" -Suffix "#"
-Write-HostCentered "$($BANNER -join '')" -Prefix "#" -Suffix "#"
-Write-HostCentered " " -Prefix "#" -Suffix "#"
-Write-HostCentered "Welcome back, \\$([System.Net.Dns]::GetHostEntry([string]$env:computername).HostName+"\"+(Get-Username))." -Prefix "#" -Suffix "#";
-Write-HostCentered "$($COMPUTER_INFO.CsDomain) $(Get-Date)" -Prefix "#" -Suffix "#";
-Write-HostCentered " " -Prefix "#" -Suffix "#"
-ConvertTo-HostWideString "#";
+$BANNER_BORDER = "#";
+$BANNER_FOREGROUND_PALETTE = @("White","Yellow","DarkYellow","Red","DarkRed");
+ConvertTo-HostWideString $BANNER_BORDER;
+Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -Lines " ";
+Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -Lines "$($BANNER -join '')";
+Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -Lines " ";
+Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -Lines "Welcome back, \\$([System.Net.Dns]::GetHostEntry([string]$env:computername).HostName+"\"+(Get-Username)).";
+Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -Lines "$($COMPUTER_INFO.CsDomain) $(Get-Date)";
+Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -Lines " ";
+ConvertTo-HostWideString $BANNER_BORDER;
 
 # Add Aliases
 Set-Alias netcat "ncat"
