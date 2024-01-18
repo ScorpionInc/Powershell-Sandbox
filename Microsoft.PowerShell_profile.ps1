@@ -74,6 +74,15 @@ function Get-WindowsVersion(){
     }
     return $ro;
 }
+# Modified from source: https://petri.com/how-to-check-a-powershell-script-is-running-with-admin-privileges/
+function Test-IsElevated{
+    $id = [System.Security.Principal.WindowsIdentity]::GetCurrent();
+    $p = New-Object System.Security.Principal.WindowsPrincipal($id);
+    if ($p.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)){
+        return $true;
+    }
+    return $false;
+}
 # Returns current username
 function Get-CurrentUsername(){
     # If Windows get from security token as environment variables can be modified.
@@ -82,7 +91,7 @@ function Get-CurrentUsername(){
         $name = ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name);
         $name.substring($name.LastIndexOf('\') + 1)
     } else {
-        [Environment]::UserName
+        [System.Environment]::UserName
     }
 }
 Set-Alias Get-Username Get-CurrentUsername | Out-Null;
@@ -735,6 +744,12 @@ New-PSDrive -PSProvider Registry -Name HKCC -Root HKEY_CURRENT_CONFIG -ErrorActi
 # Add Aliases
 Set-Alias netcat "ncat"
 Set-Alias unzip "Expand-Archive"
+
+# Setup my custom prompt
+function prompt {
+    'PS [' + $(Get-Date -Format "HH:mm") + '] ' + $(Get-Location) +
+        $(if ($NestedPromptLevel -ge 1) { '>>' }) + '> '
+}
 
 # Define and Display Profile Banner.
 function Write-HostProfileBanner(){
