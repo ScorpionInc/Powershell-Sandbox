@@ -6,6 +6,14 @@ try{
     [Console]::OutputEncoding = $targetOutputEncoding;
 } Catch {}
 
+# Fix Security Protocols to default to TLS 1.2 rather than default TLS 1.0
+# https://en.wikipedia.org/wiki/Transport_Layer_Security
+# https://stackoverflow.com/a/48030563
+[Net.ServicePointManager]::SecurityProtocol = 
+  [Net.SecurityProtocolType]::Tls12 -bor `
+  [Net.SecurityProtocolType]::Tls11 -bor `
+  [Net.SecurityProtocolType]::Tls
+
 # Modified from source:
 #https://stackoverflow.com/questions/9204829/deep-copying-a-psobject
 #https://stackoverflow.com/a/62559171
