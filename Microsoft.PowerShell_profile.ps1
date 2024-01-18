@@ -89,10 +89,9 @@ function Get-CurrentUsername(){
     if(Test-IsWindows){
         # Windows Only
         $name = ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name);
-        $name.substring($name.LastIndexOf('\') + 1)
-    } else {
-        [System.Environment]::UserName
+        return $name.substring($name.LastIndexOf('\') + 1);
     }
+    return [System.Environment]::UserName
 }
 Set-Alias Get-Username Get-CurrentUsername | Out-Null;
 
@@ -747,8 +746,11 @@ Set-Alias unzip "Expand-Archive"
 
 # Setup my custom prompt
 function prompt {
-    'PS [' + $(Get-Date -Format "HH:mm") + '] ' + $(Get-Location) +
-        $(if ($NestedPromptLevel -ge 1) { '>>' }) + '> '
+    $rsv = "PS$($PSVersionTable.PSVersion.Major)[$(Get-Date -Format "HH:mm:ss")] $(Get-Username)@$([System.Environment]::MachineName):$(Get-Location)";
+    for($level = 0; $level -le $NestedPromptLevel; $level++) {
+        $rsv = $rsv + $(IIf $(Test-IsElevated) "$" "#");
+    }
+    return $rsv + " ";
 }
 
 # Define and Display Profile Banner.
