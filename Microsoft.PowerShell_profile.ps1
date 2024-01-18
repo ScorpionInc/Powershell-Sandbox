@@ -603,6 +603,19 @@ function Get-AllFileHashes([string]$path, [string[]]$algos = $Global:GET_FILEHAS
     }
 }
 
+# TODO
+# Returns user history
+function Get-GUI-History(){
+    Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\UserAssist\{CEBFF5CD-ACE2-4F4F-9178-9926F41749EA}\Count"
+    Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\UserAssist\{F4E57C4B-2036-45F0-A9AB-443BCFE33D9F}\Count"
+}
+
+# TODO
+# Returns available files from the recycling bin.
+function Get-Recycled(){
+    Get-ChildItem 'C:\$RECYCLE.BIN' -Recurse -Verbose -Force -File -ErrorAction SilentlyContinue
+}
+
 # Add missing registry PS-Drives
 New-PSDrive -PSProvider Registry -Name HKCR -Root HKEY_CLASSES_ROOT -ErrorAction SilentlyContinue | Out-Null;
 New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS -ErrorAction SilentlyContinue | Out-Null;
