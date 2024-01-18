@@ -44,6 +44,36 @@ function Get-IsISE(){
 function Test-IsWindows(){
     [System.Environment]::OSVersion.Platform -ieq "Win32NT"
 }
+# Returns object of current Windows OS Versioning info
+function Get-WindowsVersion(){
+    $ro = [PSCustomObject]@{
+        VersionString = ''
+        Version = ''
+        Platform = ''
+        ServicePack = ''
+        Major = 0
+        Minor = 0
+        Build = 0
+        Revision = 0
+        Release = 0
+    };
+    if( -not $(Test-IsWindows)){
+        return $ro;
+    }
+    $ro.Platform = 'Win32NT';
+    $ro.VersionString = [System.Environment]::OSVersion.VersionString;
+    $ro.Version = [System.Environment]::OSVersion.Version;
+    $ro.ServicePack = [System.Environment]::OSVersion.ServicePack;
+    $ro.Major = [System.Environment]::OSVersion.Version.Major;
+    $ro.Minor = [System.Environment]::OSVersion.Version.Minor;
+    $ro.Build = [System.Environment]::OSVersion.Version.Build;
+    $ro.Revision = [System.Environment]::OSVersion.Version.Revision;
+    $ro.Release = ($(Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name ReleaseId).ReleaseId);
+    if($ro.Release -ne "" -and $ro.VersionString -ne ""){
+        $ro.VersionString = ($ro.VersionString + "[" + $ro.Release + "]");
+    }
+    return $ro;
+}
 # Returns current username
 function Get-CurrentUsername(){
     # If Windows get from security token as environment variables can be modified.
