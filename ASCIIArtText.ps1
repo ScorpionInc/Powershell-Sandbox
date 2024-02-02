@@ -155,6 +155,12 @@
 	$letters_data["Y"] += "  | |`n";
 	$letters_data["Y"] += "  | |`n";
 	$letters_data["Y"] += "  |-|";
+	$letters_data["Z"] += "/-----\`n";
+	$letters_data["Z"] += "\---/ /`n";
+	$letters_data["Z"] += "   / /`n";
+	$letters_data["Z"] += "  / /`n";
+	$letters_data["Z"] += " / /--\`n";
+	$letters_data["Z"] += "<-----/";
 	# Lowercase Initialized as Uppercase
 	foreach($l in 97..122){
 		$letters_data[ [char]$l ] = $letters_data[ [char]$(($l - 32)) ];
@@ -167,18 +173,27 @@
 }
 # Returns the height of a specific character in by line breaks
 function Get-ASCIIArtCharHeight([char]$Character, [array]$ASCIIArtSet = @()){
+	if($ASCIIArtSet.ContainsKey($Character)){
+		$art = $ASCIIArtSet[$Character]
+		$counter = 0
+		ForEach($line in $($art -split "[\r\n]+")){
+			$counter += 1
+		}
+		return $counter
+	}
+	return 0
 }
 # Returns the max and min width of the ascii characters rows.
 function Get-ASCIIArtCharWidth([char]$Character, [array]$ASCIIArtSet = @()){
 }
-$ASCIIARTTEXT = (initASCIITextTable);
+
 # Generates ASCII Art to represent string input value.
-function Generate-ASCIIArtText([String]$Text){
+function Generate-ASCIIArtText([String]$Text, [array]$ASCIIArtSet = @()){
 	$buffer = "";
 	$lineCount = 0;
 	$cWidths = @();
 	foreach($c in $Text.ToCharArray()){
-		$nextArt = $ASCIIARTTEXT["$($c)"];
+		$nextArt = $ASCIIArtSet["$($c)"];
 		$nextArtLines = $nextArt.Split("`n");
 		$nextLineCount = $nextArtLines.Count;
 		if($lineCount -lt $nextLineCount){
@@ -195,7 +210,7 @@ function Generate-ASCIIArtText([String]$Text){
 	for($i = 0; $i -lt $lineCount; $i++){
 		$cArray = $Text.ToCharArray();
 		for($ii = 0; $ii -lt $cArray.Count; $ii++){
-			$nextArt = $ASCIIARTTEXT["$($cArray[$ii])"];
+			$nextArt = $ASCIIArtSet["$($cArray[$ii])"];
 			$nextArtLines = $nextArt.Split("`n");
 			$nextLineCount = $nextArtLines.Count;
 			if(($lineCount - $i) -gt $nextLineCount){
@@ -216,4 +231,7 @@ function Generate-ASCIIArtText([String]$Text){
 	}
 	return $buffer;
 }
-echo "$(Generate-ASCIIArtText "HANGMAN")";
+
+$ASCIIARTTEXT = (initASCIITextTable);
+echo "$(Generate-ASCIIArtText "HANGMAN" $ASCIIARTTEXT)";
+echo "$(Get-ASCIIArtCharHeight('H' $ASCIIARTTEXT))"
