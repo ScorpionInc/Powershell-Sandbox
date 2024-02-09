@@ -1,6 +1,5 @@
 ﻿function New-ASCIITextTable(){
-	#TODO
-	# Returns hashtable
+	# Returns hashtable of ASCII art for common English Letters using only ASCII.
 	# Target Size is 6 lines and <= 12 wide.
 	# Uppercase initialized as empty strings.
 	#$letters_data = @{};# Case-Insensitive(Wrong)
@@ -44,7 +43,7 @@
 	$letters_data["F"] += "| +---\`n";
 	$letters_data["F"] += "| +---/`n";
 	$letters_data["F"] += "| |`n";
-	$letters_data["F"] += "|-|";
+	$letters_data["F"] += "|_|";
 	$letters_data["G"] += "+------\`n";
 	$letters_data["G"] += "| +----/`n";
 	$letters_data["G"] += "| |/--\`n";
@@ -200,6 +199,11 @@
 	$letters_data["f"] += "\-+ +-/`n";
 	$letters_data["f"] += "  | |`n";
 	$letters_data["f"] += "  +-+";
+	$letters_data["g"]  = "/----\`n";
+	$letters_data["g"] += "| <> |`n";
+	$letters_data["g"] += "\--| \`n";
+	$letters_data["g"] += " /-/ /`n";
+	$letters_data["g"] += " \--/";
 	$letters_data["h"]  = "/-\`n";
 	$letters_data["h"] += "| |`n";
 	$letters_data["h"] += "| |--\`n";
@@ -246,6 +250,11 @@
 	$letters_data["r"] += "| +--/`n";
 	$letters_data["r"] += "| |`n";
 	$letters_data["r"] += "+-+";
+	$letters_data["s"]  = "//===>`n";
+	$letters_data["s"] += "||`n";
+	$letters_data["s"] += "L\==\\`n";
+	$letters_data["s"] += "     ||`n";
+	$letters_data["s"] += "<===//";
 	$letters_data["t"]  = "  /-\`n";
 	$letters_data["t"] += "/-+ +-\`n";
 	$letters_data["t"] += "\-+ +-/`n";
@@ -358,7 +367,6 @@ function New-ASCIIArtText([String]$Text, [hashtable]$ASCIIArtSet = @()){
 	return $buffer;
 }
 
-$ASCIIARTTEXT = (New-ASCIITextTable)
-Write-Host "$(New-ASCIIArtText -Text "Jumped over the," -ASCIIArtSet ($ASCIIARTTEXT))"
-#Write-Host "$(New-ASCIIArtText -Text "HANGMAN" -ASCIIArtSet ($ASCIIARTTEXT))"
-#Write-Host "$(Get-ASCIIArtCharWidth 'H' ($ASCIIARTTEXT))"
+# Example Usage:
+#$ASCIIARTTEXT = (New-ASCIITextTable)
+#Write-Host "$(New-ASCIIArtText -Text "Hello World." -ASCIIArtSet ($ASCIIARTTEXT))"
