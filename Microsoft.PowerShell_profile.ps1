@@ -95,6 +95,47 @@ function Get-CurrentUsername(){
 }
 Set-Alias Get-Username Get-CurrentUsername | Out-Null;
 
+# Create Aliases for WMI / CIM (as needed.)
+if ((Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue) && (-not (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue)) && (-not (Test-Path alias:Get-CimInstance))){
+	Set-Alias -Name Get-CimInstance -Value Get-WmiObject;
+}
+if ((Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue) && (-not (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue)) && (-not (Test-Path alias:Get-WmiObject))) {
+	Set-Alias -Name Get-WmiObject -Value Get-CimInstance;
+}
+
+# Returns $true when current machine is a member of a domain.
+# Otherwise, or on error, returns $false.
+function Get-IsDomainMember(){
+	if (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue){
+		return ($(Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true);
+	} elseif (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue) {
+		return ($(Get-CimInstance -ClassName Win32_ComputerSystem).PartOfDomain -eq $true);
+	}
+	# Here be dragons.
+	return $false;
+}
+
+# Returns Workgroup Name on success.
+# Otherwise, or on error, returns "".
+function Get-CurrentWorkgroup(){
+	if (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue){
+		return ($(Get-WmiObject -Class Win32_ComputerSystem).Workgroup);
+	} elseif (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue) {
+		return ($(Get-CimInstance -ClassName Win32_ComputerSystem).Workgroup);
+	}
+	# Here be dragons.
+	return "";
+}
+
+# Returns Current Domain when current amchine is a member. Returns Current Workgroup otherwise.
+function Get-CurrentDomainOrWorkgroup(){
+	if(Get-IsDomainMember){
+		[System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+	}else{
+		Get-CurrentWorkgroup
+	}
+}
+
 # ANSI Color Code Function(s)
 # Reference: Get-PSReadLineOption(v5.1)
 $ANSIEscape = "$([char]27)";
@@ -774,7 +815,8 @@ function Write-HostProfileBanner(){
         [char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x28bb,[char]0x28b8,[char]0x28ff,[char]0x28ff,[char]0x28ff,[char]0x28ff,"&f&",[char]0x287f,[char]0x281f,[char]0x283f,[char]0x281b,[char]0x281f,[char]0x2809,[char]0x2803,"&fff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"$([Environment]::NewLine)",
         [char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,"&f&",[char]0x2819,[char]0x281b,[char]0x281b,[char]0x2809,"&f&",[char]0x283a,[char]0x2837,[char]0x28a6,[char]0x2836,[char]0x2837,[char]0x280a,"&fff&",[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800,[char]0x2800
     );
-    $COMPUTER_INFO = (Get-ComputerInfo);
+	if (Get-Command "Get-ComputerInfo" -ErrorAction SilentlyContinue){
+	}
     $BANNER_BORDER = "#";
     $BANNER_FOREGROUND_PALETTE = @("White","Yellow","DarkYellow","Red","DarkRed");
     $BANNER_BACKGROUND_PALETTE = @("Black");
@@ -784,7 +826,7 @@ function Write-HostProfileBanner(){
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines "$($BANNER -join '')";
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines " ";
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines "Welcome back, \\$([System.Net.Dns]::GetHostEntry([string]$env:computername).HostName+"\"+(Get-Username)).";
-    Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines "$($COMPUTER_INFO.CsDomain) $(Get-Date)";
+    Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines "$(Get-CurrentDomainOrWorkgroup) $(Get-Date)";
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines " ";
     Write-Host -ForegroundColor $BANNER_FOREGROUND_PALETTE[0] -BackgroundColor $BANNER_BACKGROUND_PALETTE[0] $BANNER_HWS;
 }
