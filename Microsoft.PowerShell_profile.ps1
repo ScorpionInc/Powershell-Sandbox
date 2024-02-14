@@ -825,7 +825,7 @@ function Write-HostProfileBanner(){
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines " ";
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines "$($BANNER -join '')";
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines " ";
-    Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines "Welcome back, \\$([System.Net.Dns]::GetHostEntry([string]$env:computername).HostName+"\"+(Get-Username)).";
+    Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines "Welcome back, \\$([System.Environment]::MachineName+"\"+(Get-Username)).";
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines "$(Get-CurrentDomainOrWorkgroup) $(Get-Date)";
     Write-HostCentered -Prefix $BANNER_BORDER -Suffix $BANNER_BORDER -FGColors ($BANNER_FOREGROUND_PALETTE) -BGColors ($BANNER_BACKGROUND_PALETTE) -Lines " ";
     Write-Host -ForegroundColor $BANNER_FOREGROUND_PALETTE[0] -BackgroundColor $BANNER_BACKGROUND_PALETTE[0] $BANNER_HWS;
