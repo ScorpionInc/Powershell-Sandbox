@@ -96,19 +96,19 @@ function Get-CurrentUsername(){
 Set-Alias Get-Username Get-CurrentUsername | Out-Null;
 
 # Create Aliases for WMI / CIM (as needed.)
-if ((Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue) && (-not (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue)) && (-not (Test-Path alias:Get-CimInstance))){
+if ((Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue -CommandType Cmdlet) && (-not (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue -CommandType Cmdlet)) && (-not (Test-Path alias:Get-CimInstance))){
 	Set-Alias -Name Get-CimInstance -Value Get-WmiObject;
 }
-if ((Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue) && (-not (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue)) && (-not (Test-Path alias:Get-WmiObject))) {
+if ((Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue -CommandType Cmdlet) && (-not (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue -CommandType Cmdlet)) && (-not (Test-Path alias:Get-WmiObject))) {
 	Set-Alias -Name Get-WmiObject -Value Get-CimInstance;
 }
 
 # Returns $true when current machine is a member of a domain.
 # Otherwise, or on error, returns $false.
 function Get-IsDomainMember(){
-	if (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue){
+	if (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue -CommandType Cmdlet){
 		return ($(Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true);
-	} elseif (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue) {
+	} elseif (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue -CommandType Cmdlet) {
 		return ($(Get-CimInstance -ClassName Win32_ComputerSystem).PartOfDomain -eq $true);
 	}
 	# Here be dragons.
@@ -118,9 +118,9 @@ function Get-IsDomainMember(){
 # Returns Workgroup Name on success.
 # Otherwise, or on error, returns "".
 function Get-CurrentWorkgroup(){
-	if (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue){
+	if (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue -CommandType Cmdlet){
 		return ($(Get-WmiObject -Class Win32_ComputerSystem).Workgroup);
-	} elseif (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue) {
+	} elseif (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue -CommandType Cmdlet) {
 		return ($(Get-CimInstance -ClassName Win32_ComputerSystem).Workgroup);
 	}
 	# Here be dragons.
