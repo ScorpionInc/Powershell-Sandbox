@@ -465,10 +465,11 @@ function ConvertTo-HostCenteredString([string]$Message="", [string]$Prefix = "",
 function Write-HostCentered([string]$Prefix = "", [string]$Suffix = "", [string]$Spacer = (""+[char]0x2800), [ConsoleColor[]]$FGColors = @($Global:CONSOLE_DEFAULT_FOREGROUND), [ConsoleColor[]]$BGColors = @($Global:CONSOLE_DEFAULT_BACKGROUND), [char]$FGMarker = 'f', [char]$BGMarker = 'b', [char]$ColorDelimiter = '&', [string[]]$Lines = @()){
     # Pre-processing
     $Processed_Lines = @();
+	$NewLineCharacters = ("$([Environment]::NewLine)" + [char]0x000a).ToCharArray() | Group-Object | Join-String -Property Name; # Unique Characters including ASCII \n at least.
     # Split string inputs into multiple entries by NewLine character(s).
     foreach($a in $Lines){
         if($a.GetType().Name -eq "String"){
-            $mLines = $a.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries);
+            $mLines = $a.Split($NewLineCharacters, [StringSplitOptions]::RemoveEmptyEntries);
             foreach($l in $mLines){
                 $Processed_Lines += $l.Trim();
             }
