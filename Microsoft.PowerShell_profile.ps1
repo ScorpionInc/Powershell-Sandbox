@@ -74,15 +74,24 @@ function Get-WindowsVersion(){
     }
     return $ro;
 }
-# Modified from source: https://petri.com/how-to-check-a-powershell-script-is-running-with-admin-privileges/
+
 function Test-IsElevated{
-    $id = [System.Security.Principal.WindowsIdentity]::GetCurrent();
-    $p = New-Object System.Security.Principal.WindowsPrincipal($id);
-    if ($p.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)){
-        return $true;
-    }
+	# Modified from source: https://petri.com/how-to-check-a-powershell-script-is-running-with-admin-privileges/
+	if(Test-IsWindows){
+	    $id = [System.Security.Principal.WindowsIdentity]::GetCurrent();
+	    $p = New-Object System.Security.Principal.WindowsPrincipal($id);
+	    if ($p.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)){
+	        return $true;
+	    }
+	}else{
+		# Assume Linux
+		if ($(whoami) -eq "root") {
+        	return $true
+    	}
+	}
     return $false;
 }
+
 # Returns current username
 function Get-CurrentUsername(){
     # If Windows get from security token as environment variables can be modified.
