@@ -105,10 +105,10 @@ function Get-CurrentUsername(){
 Set-Alias Get-Username Get-CurrentUsername | Out-Null;
 
 # Create Aliases for WMI / CIM (as needed.)
-if ((Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue -CommandType Cmdlet) && (-not (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue -CommandType Cmdlet)) && (-not (Test-Path alias:Get-CimInstance))){
+if ((Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue -CommandType Cmdlet) -and (-not (Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue -CommandType Cmdlet)) -and (-not (Test-Path alias:Get-CimInstance))){
 	Set-Alias -Name Get-CimInstance -Value Get-WmiObject;
 }
-if ((Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue -CommandType Cmdlet) && (-not (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue -CommandType Cmdlet)) && (-not (Test-Path alias:Get-WmiObject))) {
+if ((Get-Command "Get-CimInstance" -ErrorAction SilentlyContinue -CommandType Cmdlet) -and (-not (Get-Command "Get-WmiObject" -ErrorAction SilentlyContinue -CommandType Cmdlet)) -and (-not (Test-Path alias:Get-WmiObject))) {
 	Set-Alias -Name Get-WmiObject -Value Get-CimInstance;
 }
 
